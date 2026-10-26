@@ -4,7 +4,7 @@ Plataforma web para la gestión de ventas de un negocio de joyería de plata. Pr
 
 - **Equipo:** Equipo 2
 - **Modelo de desarrollo:** Cascada
-- **Sitio desplegado:** [https://….vercel.app](https://….vercel.app) <!-- TODO: pegar la URL real de Vercel -->
+- **Sitio desplegado:**  <!-- TODO: pegar la URL real de Vercel -->
 
 ---
 
