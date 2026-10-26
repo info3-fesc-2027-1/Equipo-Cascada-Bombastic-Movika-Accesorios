@@ -1,5 +1,6 @@
 # Movika Accesorios
 
+puatmdre
 Plataforma web para la gestión de ventas de un negocio de joyería de plata. Proyecto académico de **Informática III. Análisis y Diseño de Sistemas I** (Grupo 1301), Licenciatura en Informática, **UNAM FES Cuautitlán**, ciclo 2027-1.
 
 - **Equipo:** Equipo 2
