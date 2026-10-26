@@ -280,3 +280,4 @@
     global.Datos = API;   // Navegador: se usa como Datos.guardarCliente(...)
   }
 })(typeof window !== "undefined" ? window : globalThis);
+    
