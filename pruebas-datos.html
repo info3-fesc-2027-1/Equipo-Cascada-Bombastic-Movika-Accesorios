@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pruebas de datos · Movika Accesorios</title>
+  <style>
+    :root { --fondo:#ffffff; --texto:#1f2430; --ok:#1a7f4b; --mal:#b3261e; --borde:#d9dce3; }
+    @media (prefers-color-scheme: dark) {
+      :root { --fondo:#16181d; --texto:#e8eaf0; --ok:#4cc38a; --mal:#ff7a70; --borde:#343844; }
+    }
+    body { font-family: system-ui, sans-serif; background: var(--fondo); color: var(--texto); max-width: 720px; margin: 2rem auto; padding: 0 1rem; }
+    h1 { font-size: 1.3rem; }
+    ul { list-style: none; padding: 0; }
+    li { padding: .5rem .75rem; border: 1px solid var(--borde); border-radius: 8px; margin-bottom: .5rem; }
+    .ok { color: var(--ok); }
+    .mal { color: var(--mal); }
+    .error { font-size: .85rem; margin-top: .25rem; }
+    #resumen { font-weight: 600; margin: 1rem 0; }
+  </style>
+</head>
+<body>
+  <h1>Pruebas de la capa de datos (Tarea 1)</h1>
+  <p>Movika Accesorios · Equipo 2 · Estas pruebas borran los datos guardados en este navegador.</p>
+  <div id="resumen">Ejecutando…</div>
+  <ul id="lista"></ul>
+
+  <script src="datos.js"></script>
+  <script src="pruebas-datos.js"></script>
+  <script>
+    const resultados = correrPruebasDatos();
+    const lista = document.getElementById("lista");
+    resultados.forEach(function (r) {
+      const li = document.createElement("li");
+      li.className = r.ok ? "ok" : "mal";
+      li.textContent = (r.ok ? "✔ " : "✘ ") + r.nombre;
+      if (!r.ok) {
+        const d = document.createElement("div");
+        d.className = "error";
+        d.textContent = r.error;
+        li.appendChild(d);
+      }
+      lista.appendChild(li);
+    });
+    const buenas = resultados.filter(function (r) { return r.ok; }).length;
+    document.getElementById("resumen").textContent = buenas + " de " + resultados.length + " pruebas correctas";
+  </script>
+</body>
+</html>
