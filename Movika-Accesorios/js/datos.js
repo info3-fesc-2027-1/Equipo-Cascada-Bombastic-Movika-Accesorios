@@ -1,8 +1,9 @@
 /**
- * datos.js — Capa de DATOS · Movika Accesorios
- * Informática III · Grupo 1301 · Equipo 2 · Modelo Cascada
- * Tarea 1 (RF1–RF5): modelos base Cliente, Producto, Pedido y PartidaPedido
- * con funciones para guardarlos y leerlos en LocalStorage.
+// Capa de datos: modelos Cliente, Producto, Pedido y Detalle
+// datos.js — Capa de datos (Tarea 1)
+// Modelos: Cliente, Producto, Pedido, PartidaPedido (Detalle)
+// Esta capa SOLO guarda y lee. No valida, no calcula totales y no cambia
+// estados: eso vive en logica.js.
  *
  * REGLA DE DISEÑO: este archivo solo guarda y lee datos.
  * Las validaciones, el cálculo del total y los cambios de estado
@@ -280,4 +281,3 @@
     global.Datos = API;   // Navegador: se usa como Datos.guardarCliente(...)
   }
 })(typeof window !== "undefined" ? window : globalThis);
-    
