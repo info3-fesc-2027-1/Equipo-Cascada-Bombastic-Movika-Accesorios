@@ -37,8 +37,43 @@
 
     return { valida: true, mensaje: "" };
   }
+    // ---- Tarea 3 (B-16): RF6, RC-01(a), RN-07 ----
+  const ESTADOS_EDITABLES = ["Pendiente", "En proceso"];
+  const ESTADOS_CERRADOS = ["Entregado", "Cancelado"];
 
-  const API = { fechaDeHoy, esFechaReal, validarFechaCompromiso };
+  // RN-07: solo se puede modificar mientras el pedido no esté cerrado
+  function puedeModificarFecha(pedido) {
+    return !!pedido && ESTADOS_EDITABLES.includes(pedido.estado);
+  }
+
+  function modificarFechaCompromiso(pedido, nuevaFecha) {
+    if (!pedido) {
+      return { ok: false, mensaje: "El pedido no existe.", pedido: pedido };
+    }
+
+    if (ESTADOS_CERRADOS.includes(pedido.estado)) {
+      return {
+        ok: false,
+        mensaje: "No se puede modificar la fecha: el pedido está " + pedido.estado + ".",
+        pedido: pedido,
+      };
+    }
+
+    if (!puedeModificarFecha(pedido)) {
+      return { ok: false, mensaje: "Estado de pedido no reconocido.", pedido: pedido };
+    }
+
+    // Reutiliza la validación de la tarea 2
+    const resultado = validarFechaCompromiso(nuevaFecha, pedido.fechaCreacion);
+    if (!resultado.valida) {
+      return { ok: false, mensaje: resultado.mensaje, pedido: pedido };
+    }
+
+    pedido.fechaCompromiso = String(nuevaFecha).trim();
+    return { ok: true, mensaje: "Fecha de compromiso actualizada.", pedido: pedido };
+  }
+
+    const API = { fechaDeHoy, esFechaReal, validarFechaCompromiso, puedeModificarFecha, modificarFechaCompromiso };
 
   if (typeof module !== "undefined" && module.exports) {
     module.exports = API;
@@ -46,3 +81,6 @@
     global.Logica = Object.assign(global.Logica || {}, API);
   }
 })(typeof window !== "undefined" ? window : globalThis);
+
+
+  
