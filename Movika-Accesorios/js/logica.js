@@ -35,9 +35,10 @@
       return { valida: false, mensaje: "La fecha de compromiso no puede ser anterior a la fecha de creación." };
     }
 
-    return { valida: true, mensaje: "" };
+        return { valida: true, mensaje: "" };
   }
-    // ---- Tarea 3 (B-16): RF6, RC-01(a), RN-07 ----
+
+  // ---- Tarea 3 (B-16): RF6, RC-01(a), RN-07 ----
   const ESTADOS_EDITABLES = ["Pendiente", "En proceso"];
   const ESTADOS_CERRADOS = ["Entregado", "Cancelado"];
 
@@ -69,11 +70,15 @@
       return { ok: false, mensaje: resultado.mensaje, pedido: pedido };
     }
 
-    pedido.fechaCompromiso = String(nuevaFecha).trim();
-    return { ok: true, mensaje: "Fecha de compromiso actualizada.", pedido: pedido };
+    // Devuelve una copia: no cambia el pedido original hasta que se guarde
+    const actualizado = { ...pedido, fechaCompromiso: String(nuevaFecha).trim() };
+    return { ok: true, mensaje: "Fecha de compromiso actualizada.", pedido: actualizado };
   }
 
-    const API = { fechaDeHoy, esFechaReal, validarFechaCompromiso, puedeModificarFecha, modificarFechaCompromiso };
+  const API = {
+    fechaDeHoy, esFechaReal, validarFechaCompromiso,
+    puedeModificarFecha, modificarFechaCompromiso,
+  };
 
   if (typeof module !== "undefined" && module.exports) {
     module.exports = API;
@@ -81,6 +86,3 @@
     global.Logica = Object.assign(global.Logica || {}, API);
   }
 })(typeof window !== "undefined" ? window : globalThis);
-
-
-  
