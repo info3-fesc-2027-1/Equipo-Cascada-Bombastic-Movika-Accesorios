@@ -4,22 +4,30 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Movika Accesorios</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <link rel="stylesheet" href="css/styles.css">
 </head>
-<body>
-  <header>
-    <h1>Movika Accesorios</h1>
-    <nav></nav>
+<body class="min-h-screen bg-slate-50 text-slate-800 flex flex-col">
+  <header class="bg-slate-900 text-white">
+    <div class="max-w-5xl mx-auto px-4 py-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <h1 class="text-xl font-bold">Movika Accesorios</h1>
+      <nav id="menu" class="flex flex-wrap gap-2"></nav>
+    </div>
   </header>
 
-  <main id="contenido"></main>
+  <main id="contenido" class="max-w-5xl w-full mx-auto px-4 py-6 flex-1"></main>
 
-  <footer>
-    <p>&copy; 2026 Movika Accesorios</p>
-    <p>
-      <a href="html-pruebas/pruebas-datos.html">Pruebas de datos</a> &middot;
-      <a href="html-pruebas/pruebas-fecha.html">Pruebas de fecha</a>
-    </p>
+  <footer class="border-t border-slate-200 text-sm text-slate-500">
+    <div class="max-w-5xl mx-auto px-4 py-4 flex flex-col gap-1 sm:flex-row sm:justify-between">
+      <p>&copy; 2026 Movika Accesorios</p>
+      <p>
+        <a class="underline hover:text-slate-800" href="html-pruebas/pruebas-datos.html">Pruebas de datos</a>
+        &middot;
+        <a class="underline hover:text-slate-800" href="html-pruebas/pruebas-fecha.html">Pruebas de fecha</a>
+        &middot;
+        <a class="underline hover:text-slate-800" href="html-pruebas/pruebas-modificar-fecha.html">Pruebas de modificar fecha</a>
+      </p>
+    </div>
   </footer>
 
   <script src="js/datos.js"></script>

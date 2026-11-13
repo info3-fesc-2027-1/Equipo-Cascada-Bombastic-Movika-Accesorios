@@ -1,7 +1,10 @@
-// logica.js - Capa de lógica (Tarea 2: validar fecha de compromiso)
+// logica.js - Capa de lógica (Tarea 2: validar fecha de compromiso · Tarea 3: modificar fecha de compromiso)
 (function (global) {
   "use strict";
 
+  // ============================================================
+  // Tarea 2 (Wendy) · Validar fecha de compromiso · RN-01, RN-08
+  // ============================================================
   function fechaDeHoy() {
     const d = new Date();
     const mes = String(d.getMonth() + 1).padStart(2, "0");
@@ -35,10 +38,12 @@
       return { valida: false, mensaje: "La fecha de compromiso no puede ser anterior a la fecha de creación." };
     }
 
-        return { valida: true, mensaje: "" };
+    return { valida: true, mensaje: "" };
   }
 
-  // ---- Tarea 3 (B-16): RF6, RC-01(a), RN-07 ----
+  // ============================================================
+  // Tarea 3 (Isaí) · Modificar fecha de compromiso · B-16 · RF6, RC-01(a), RN-07
+  // ============================================================
   const ESTADOS_EDITABLES = ["Pendiente", "En proceso"];
   const ESTADOS_CERRADOS = ["Entregado", "Cancelado"];
 
@@ -70,14 +75,20 @@
       return { ok: false, mensaje: resultado.mensaje, pedido: pedido };
     }
 
-    // Devuelve una copia: no cambia el pedido original hasta que se guarde
+    // Devuelve una copia: el pedido original no cambia hasta que se guarde
     const actualizado = { ...pedido, fechaCompromiso: String(nuevaFecha).trim() };
     return { ok: true, mensaje: "Fecha de compromiso actualizada.", pedido: actualizado };
   }
 
+  // ============================================================
+  // Exportación (una sola declaración de API para todo el archivo)
+  // ============================================================
   const API = {
-    fechaDeHoy, esFechaReal, validarFechaCompromiso,
-    puedeModificarFecha, modificarFechaCompromiso,
+    fechaDeHoy,
+    esFechaReal,
+    validarFechaCompromiso,
+    puedeModificarFecha,
+    modificarFechaCompromiso,
   };
 
   if (typeof module !== "undefined" && module.exports) {
