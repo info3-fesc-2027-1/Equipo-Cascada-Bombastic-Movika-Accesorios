@@ -81,6 +81,32 @@
   }
 
   // ============================================================
+  // Tarea 4 (Mónica) · Validar cliente · RF1  (versión mínima, ampliable)
+  // ============================================================
+  function validarCliente(cliente) {
+    const c = cliente || {};
+    if (String(c.nombre ?? "").trim() === "") {
+      return { valida: false, mensaje: "El nombre es obligatorio." };
+    }
+    if (String(c.contactoWhatsapp ?? "").trim() === "") {
+      return { valida: false, mensaje: "El contacto de WhatsApp es obligatorio." };
+    }
+    return { valida: true, mensaje: "" };
+  }
+
+  // ============================================================
+  // Tarea 5 (Donovan) · Filtrar productos por tipo · RF2  (versión mínima, ampliable)
+  // ============================================================
+  const TIPOS_ACCESORIO = ["Anillo", "Aretes", "Collar", "Pulsera"];
+
+  function filtrarProductosPorTipo(productos, tipo) {
+    if (!TIPOS_ACCESORIO.includes(tipo)) {
+      throw new Error("Tipo de accesorio no válido.");
+    }
+    return productos.filter((p) => p.tipoAccesorio === tipo);
+  }
+
+  // ============================================================
   // Exportación (una sola declaración de API para todo el archivo)
   // ============================================================
   const API = {
@@ -89,6 +115,8 @@
     validarFechaCompromiso,
     puedeModificarFecha,
     modificarFechaCompromiso,
+    validarCliente,
+    filtrarProductosPorTipo,
   };
 
   if (typeof module !== "undefined" && module.exports) {
