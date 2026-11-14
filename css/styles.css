@@ -1,0 +1,192 @@
+:root {
+  --cielo: #63d2f4;
+  --cielo-claro: #c9f3ff;
+  --pasto: #4caf3a;
+  --pasto-oscuro: #2f7d27;
+  --tierra: #7a4a2a;
+  --tierra-oscura: #4a2a16;
+  --amarillo: #fff59d;
+  --naranja: #f0a050;
+  --letrero: #b8742e;
+  --tinta: #1b1b1b;
+  --contorno: 0 -4px 0 0 var(--tinta), 0 4px 0 0 var(--tinta), -4px 0 0 0 var(--tinta), 4px 0 0 0 var(--tinta);
+}
+
+body.pixel-body {
+  position: relative;
+  margin: 0;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
+  font-family: "VT323", monospace;
+  font-size: 1.4rem;
+  color: var(--tinta);
+  background: linear-gradient(var(--cielo), var(--cielo-claro)) fixed;
+}
+
+.encabezado {
+  position: relative;
+  z-index: 1;
+  padding: 32px 20px 12px;
+  text-align: center;
+}
+
+.titulo {
+  display: inline-block;
+  margin: 0 8px 22px;
+  padding: 16px 20px;
+  cursor: pointer;
+  background: var(--amarillo);
+  box-shadow: var(--contorno), inset 0 -8px 0 0 var(--naranja);
+  font-family: "Press Start 2P", monospace;
+  font-size: clamp(0.9rem, 4vw, 1.4rem);
+  line-height: 1.5;
+}
+
+.menu {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 14px;
+}
+
+button.boton {
+  padding: 12px 14px;
+  border: 0;
+  cursor: pointer;
+  color: #fff;
+  background: var(--letrero);
+  box-shadow: var(--contorno), inset -4px -4px 0 0 var(--tierra-oscura), inset 4px 4px 0 0 rgba(255, 255, 255, 0.25);
+  font-family: "Press Start 2P", monospace;
+  font-size: 0.7rem;
+  line-height: 1.4;
+}
+
+button.boton:hover,
+button.boton:focus-visible {
+  transform: translateY(-2px);
+}
+
+button.boton:active {
+  transform: translateY(2px);
+}
+
+button.boton:focus-visible {
+  outline: 4px dashed #fff;
+  outline-offset: 6px;
+}
+
+button.boton[aria-current="page"],
+button.boton-start {
+  background: var(--pasto);
+  box-shadow: var(--contorno), inset -4px -4px 0 0 var(--pasto-oscuro), inset 4px 4px 0 0 rgba(255, 255, 255, 0.3);
+}
+
+button.boton-start {
+  padding: 18px 28px;
+  font-size: 1.1rem;
+}
+
+.contenido {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 24px 20px 40px;
+}
+
+.panel {
+  margin: 8px 6px 28px;
+  padding: 20px;
+  background: #fff;
+  box-shadow: var(--contorno), inset -4px -4px 0 0 rgba(0, 0, 0, 0.12);
+}
+
+.panel h2 {
+  margin: 0 0 14px;
+  font-family: "Press Start 2P", monospace;
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+.panel p {
+  margin: 0 0 12px;
+  line-height: 1.3;
+}
+
+.centrado {
+  text-align: center;
+}
+
+.suelo {
+  position: relative;
+  z-index: 1;
+  padding: 36px 20px 20px;
+  text-align: center;
+  color: #ffe9c9;
+  font-size: 1.1rem;
+  background: var(--tierra);
+  border-top: 16px solid var(--pasto);
+  box-shadow: inset 0 8px 0 0 var(--tierra-oscura);
+}
+
+.suelo p {
+  margin: 4px 0;
+}
+
+.suelo a {
+  color: #fff;
+  text-decoration: underline;
+}
+
+.nube {
+  position: absolute;
+  top: 90px;
+  left: -120px;
+  width: 96px;
+  height: 28px;
+  background: #fff;
+  opacity: 0.9;
+  animation: flotar 60s linear infinite;
+}
+
+.nube::before {
+  content: "";
+  position: absolute;
+  left: 20px;
+  top: -16px;
+  width: 48px;
+  height: 16px;
+  background: #fff;
+}
+
+.nube-2 {
+  top: 220px;
+  width: 64px;
+  height: 20px;
+  animation-duration: 90s;
+  animation-delay: -30s;
+}
+
+@keyframes flotar {
+  to {
+    transform: translateX(calc(100vw + 260px));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nube {
+    animation: none;
+    left: 10%;
+  }
+}
+
+@media (max-width: 480px) {
+  button.boton {
+    padding: 10px;
+    font-size: 0.6rem;
+  }
+}
