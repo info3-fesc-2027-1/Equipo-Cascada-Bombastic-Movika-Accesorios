@@ -386,3 +386,53 @@ button.boton[aria-pressed="true"] {
     grid-template-columns: 1fr;
   }
 }
+
+/* ==========================================================
+   Nuevo pedido (Tarea 6): caja de piezas, líneas del pedido y total
+   ========================================================== */
+
+.caja {
+  margin: 0 0 16px;
+  padding: 12px;
+  border: 4px dashed var(--tinta);
+}
+
+.caja > .etiqueta {
+  margin-bottom: 10px;
+}
+
+.carrito {
+  display: grid;
+  gap: 10px;
+  margin: 14px 0 10px;
+}
+
+.linea {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 4px solid var(--tinta);
+  background: #fffdf0;
+}
+
+.linea .info {
+  flex: 1 1 200px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.linea .info span {
+  display: block;
+  line-height: 1.2;
+}
+
+.total {
+  margin: 0 0 4px;
+  text-align: right;
+  font-family: "Press Start 2P", monospace;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}

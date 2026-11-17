@@ -350,6 +350,255 @@
   }
 
   // ==================================================================
+  // PANTALLA: NUEVO PEDIDO (Tarea 6 · RF3 · RN-04, RN-06)
+  // ==================================================================
+
+  function mostrarNuevoPedido(contenedor) {
+    const clientes = window.Datos.obtenerClientes();
+    const productos = window.Datos.obtenerProductos();
+
+    // Sin clientes o sin piezas no se puede crear un pedido: se guía a la persona.
+    if (clientes.length === 0 || productos.length === 0) {
+      let guia = "";
+      if (clientes.length === 0) {
+        guia +=
+          '<p class="vacio">Primero registra al menos un cliente.</p>' +
+          '<div class="acciones"><button type="button" class="boton" data-ir="clientes">Ir a Clientes</button></div>';
+      }
+      if (productos.length === 0) {
+        guia +=
+          '<p class="vacio">Primero registra al menos una pieza en el catálogo.</p>' +
+          '<div class="acciones"><button type="button" class="boton" data-ir="catalogo">Ir al Catálogo</button></div>';
+      }
+      contenedor.innerHTML = '<section class="panel"><h2>Nuevo pedido</h2>' + guia + "</section>";
+      contenedor.querySelectorAll("[data-ir]").forEach(function (boton) {
+        boton.addEventListener("click", function () {
+          window.UI.mostrar(boton.getAttribute("data-ir"));
+        });
+      });
+      return;
+    }
+
+    const puntosUsados = Array.from(
+      new Set(window.Datos.obtenerPedidos().map((p) => p.puntoEntrega).filter(Boolean))
+    );
+
+    let partidas = []; // { idProducto, nombre, cantidad, precioUnitario, personalizacion }
+
+    contenedor.innerHTML = `
+      <section class="panel" aria-labelledby="ped-titulo">
+        <h2 id="ped-titulo">Nuevo pedido</h2>
+        <form id="ped-form" class="formulario" novalidate>
+          <div class="grupo">
+            <label for="ped-cliente" class="etiqueta">Cliente <span class="obligatorio">*</span></label>
+            <select id="ped-cliente" name="idCliente" class="campo">
+              <option value="">Selecciona</option>
+              ${clientes
+                .map((c) => '<option value="' + c.idCliente + '">' + escapar(c.nombre) + "</option>")
+                .join("")}
+            </select>
+          </div>
+
+          <div class="caja">
+            <p class="etiqueta">Piezas del pedido <span class="obligatorio">*</span></p>
+
+            <div class="grupo">
+              <label for="ped-producto" class="etiqueta">Pieza</label>
+              <select id="ped-producto" class="campo">
+                <option value="">Selecciona</option>
+                ${productos
+                  .map(
+                    (pr) =>
+                      '<option value="' + pr.idProducto + '">' +
+                      escapar(pr.nombrePieza + " · " + pr.tipoAccesorio + " · " + formatoPesos.format(pr.precio)) +
+                      "</option>"
+                  )
+                  .join("")}
+              </select>
+            </div>
+
+            <div class="grupo fila-doble">
+              <div>
+                <label for="ped-cantidad" class="etiqueta">Cantidad</label>
+                <input id="ped-cantidad" type="number" min="1" step="1" value="1" inputmode="numeric" class="campo">
+              </div>
+              <div>
+                <label for="ped-personalizacion" class="etiqueta">Personalización</label>
+                <input id="ped-personalizacion" type="text" autocomplete="off" placeholder="Ej. Inicial A" class="campo">
+              </div>
+            </div>
+
+            <p id="ped-error-pieza" role="alert" hidden class="mensaje mensaje-error"></p>
+            <div class="acciones">
+              <button type="button" id="ped-agregar" class="boton boton-chico">Agregar pieza</button>
+            </div>
+
+            <div id="ped-carrito" class="carrito"></div>
+            <p id="ped-total" class="total"></p>
+          </div>
+
+          <div class="grupo">
+            <label for="ped-entrega" class="etiqueta">Punto de entrega <span class="obligatorio">*</span></label>
+            <input id="ped-entrega" name="puntoEntrega" type="text" autocomplete="off" list="ped-puntos"
+                   placeholder="Ej. Metro Cuautitlán" class="campo">
+            <datalist id="ped-puntos">
+              ${puntosUsados.map((x) => '<option value="' + escapar(x) + '"></option>').join("")}
+            </datalist>
+          </div>
+
+          <div class="grupo">
+            <label for="ped-fecha" class="etiqueta">Fecha de compromiso <span class="obligatorio">*</span></label>
+            <input id="ped-fecha" name="fechaCompromiso" type="date" min="${window.Logica.fechaDeHoy()}" class="campo">
+          </div>
+
+          <p id="ped-error" role="alert" hidden class="mensaje mensaje-error"></p>
+          <p id="ped-exito" role="status" hidden class="mensaje mensaje-exito"></p>
+
+          <div class="acciones">
+            <button type="submit" class="boton">Crear pedido</button>
+          </div>
+        </form>
+      </section>`;
+
+    const form = contenedor.querySelector("#ped-form");
+    const errorPieza = contenedor.querySelector("#ped-error-pieza");
+    const mostrarMensaje = crearMensajero(
+      contenedor.querySelector("#ped-error"),
+      contenedor.querySelector("#ped-exito")
+    );
+
+    function pintarCarrito() {
+      const carrito = contenedor.querySelector("#ped-carrito");
+      const total = contenedor.querySelector("#ped-total");
+
+      if (partidas.length === 0) {
+        carrito.innerHTML = '<p class="vacio">Todavía no hay piezas en el pedido.</p>';
+        total.textContent = "";
+        return;
+      }
+
+      carrito.innerHTML = partidas
+        .map(function (p, i) {
+          const subtotal = window.Logica.calcularTotal([p]);
+          return `
+            <div class="linea">
+              <div class="info">
+                <strong>${escapar(p.nombre)}</strong>
+                <span>${p.cantidad} × ${escapar(formatoPesos.format(p.precioUnitario))} = ${escapar(formatoPesos.format(subtotal))}</span>
+                ${p.personalizacion ? "<span>Personalización: " + escapar(p.personalizacion) + "</span>" : ""}
+              </div>
+              <button type="button" class="boton boton-chico" data-quitar="${i}">Quitar</button>
+            </div>`;
+        })
+        .join("");
+
+      total.textContent = "Total: " + formatoPesos.format(window.Logica.calcularTotal(partidas));
+    }
+
+    function agregarPieza() {
+      const selector = contenedor.querySelector("#ped-producto");
+      const cantidad = contenedor.querySelector("#ped-cantidad");
+      const personalizacion = contenedor.querySelector("#ped-personalizacion");
+
+      // La regla vive en logica.js
+      const resultado = window.Logica.validarPartida({ idProducto: selector.value, cantidad: cantidad.value });
+      if (!resultado.valida) {
+        errorPieza.textContent = resultado.mensaje;
+        errorPieza.hidden = false;
+        (resultado.campo === "cantidad" ? cantidad : selector).focus();
+        return;
+      }
+      errorPieza.hidden = true;
+
+      const producto = productos.find((pr) => pr.idProducto === Number(selector.value));
+      const texto = personalizacion.value.trim();
+      const existente = partidas.find(
+        (p) => p.idProducto === producto.idProducto && p.personalizacion.toLowerCase() === texto.toLowerCase()
+      );
+
+      if (existente) {
+        existente.cantidad += Number(cantidad.value);
+      } else {
+        partidas.push({
+          idProducto: producto.idProducto,
+          nombre: producto.nombrePieza,
+          cantidad: Number(cantidad.value),
+          precioUnitario: producto.precio, // el precio queda congelado al agregar la pieza
+          personalizacion: texto,
+        });
+      }
+
+      selector.value = "";
+      cantidad.value = "1";
+      personalizacion.value = "";
+      mostrarMensaje(null, ""); // oculta el error o el éxito anterior del pedido
+      pintarCarrito();
+    }
+
+    contenedor.querySelector("#ped-agregar").addEventListener("click", agregarPieza);
+
+    // Enter en estos campos agrega la pieza (no envía el pedido por accidente)
+    ["#ped-cantidad", "#ped-personalizacion"].forEach(function (selector) {
+      contenedor.querySelector(selector).addEventListener("keydown", function (evento) {
+        if (evento.key === "Enter") {
+          evento.preventDefault();
+          agregarPieza();
+        }
+      });
+    });
+
+    contenedor.querySelector("#ped-carrito").addEventListener("click", function (evento) {
+      const boton = evento.target.closest("button[data-quitar]");
+      if (!boton) return;
+      partidas.splice(Number(boton.getAttribute("data-quitar")), 1);
+      pintarCarrito();
+    });
+
+    form.addEventListener("submit", function (evento) {
+      evento.preventDefault();
+
+      const f = new FormData(form);
+
+      // Las reglas viven en logica.js; aquí solo se muestra el resultado.
+      const resultado = window.Logica.armarPedido({
+        idCliente: String(f.get("idCliente") || ""),
+        partidas: partidas,
+        puntoEntrega: String(f.get("puntoEntrega") || ""),
+        fechaCompromiso: String(f.get("fechaCompromiso") || ""),
+        fechaCreacion: window.Logica.fechaDeHoy(),
+      });
+
+      if (!resultado.ok) {
+        mostrarMensaje(contenedor.querySelector("#ped-error"), resultado.mensaje);
+        const campos = {
+          idCliente: "#ped-cliente",
+          partidas: "#ped-producto",
+          puntoEntrega: "#ped-entrega",
+          fechaCompromiso: "#ped-fecha",
+        };
+        contenedor.querySelector(campos[resultado.campo] || "#ped-cliente").focus();
+        return;
+      }
+
+      // El guardado vive en datos.js.
+      const guardado = window.Datos.guardarPedido(resultado.pedido, resultado.partidas);
+      const cliente = clientes.find((c) => c.idCliente === guardado.idCliente);
+
+      partidas = [];
+      form.reset();
+      pintarCarrito();
+      mostrarMensaje(
+        contenedor.querySelector("#ped-exito"),
+        "Pedido #" + guardado.idPedido + " creado para " + (cliente ? cliente.nombre : "el cliente") +
+          ". Total: " + formatoPesos.format(guardado.total) + ". Estado: " + guardado.estado + "."
+      );
+      contenedor.querySelector("#ped-cliente").focus();
+    });
+
+    pintarCarrito();
+  }
+
+  // ==================================================================
   // REGISTRO DE PANTALLAS (el menú y la navegación están en ui-pixel.js)
   // ==================================================================
   function registrarPantallas() {
@@ -365,7 +614,7 @@
     window.Datos.inicializarDatos();
     window.UI.registrarVista("clientes", mostrarClientes);   // Tarea 4
     window.UI.registrarVista("catalogo", mostrarCatalogo);   // Tarea 5
-    // window.UI.registrarVista("pedido",  mostrarNuevoPedido);  ← Tarea 6
+    window.UI.registrarVista("pedido", mostrarNuevoPedido);   // Tarea 6
     // window.UI.registrarVista("pedidos", mostrarPedidos);      ← Tareas 7 y 8
   }
 
