@@ -250,6 +250,108 @@
   }
 
   // ============================================================
+  // Tarea 7 (Wendy) · Estado del pedido y cancelación · RF4 · RC-01(b), RN-02
+  // ============================================================
+  // Orden: Pendiente → En proceso → Entregado. Cancelado es un estado final alterno:
+  // solo se llega desde Pendiente o En proceso y con un motivo obligatorio.
+  // Entregado y Cancelado son finales: no cambian ni se reactivan.
+  // Estas funciones NO guardan: devuelven una copia del pedido y la pantalla la guarda con Datos.actualizarPedido.
+  const ORDEN_ESTADOS = ["Pendiente", "En proceso", "Entregado"];
+
+  // El estado al que se puede avanzar desde `estado` (null si no hay).
+  function siguienteEstado(estado) {
+    const i = ORDEN_ESTADOS.indexOf(estado);
+    return i === -1 || i === ORDEN_ESTADOS.length - 1 ? null : ORDEN_ESTADOS[i + 1];
+  }
+
+  // Avanza un paso en el orden. Devuelve { ok, mensaje, pedido }.
+  function cambiarEstadoPedido(pedido, nuevoEstado) {
+    if (!pedido) {
+      return { ok: false, mensaje: "El pedido no existe.", pedido: pedido };
+    }
+
+    if (ESTADOS_CERRADOS.includes(pedido.estado)) {
+      return {
+        ok: false,
+        mensaje: "El pedido está " + pedido.estado + ": ya no puede cambiar de estado.",
+        pedido: pedido,
+      };
+    }
+
+    if (!ESTADOS_EDITABLES.includes(pedido.estado)) {
+      return { ok: false, mensaje: "Estado de pedido no reconocido.", pedido: pedido };
+    }
+
+    if (nuevoEstado === "Cancelado") {
+      return {
+        ok: false,
+        mensaje: "Para cancelar un pedido usa la opción de cancelar, que pide el motivo.",
+        pedido: pedido,
+      };
+    }
+
+    const esperado = siguienteEstado(pedido.estado);
+    if (nuevoEstado !== esperado) {
+      return {
+        ok: false,
+        mensaje: "Desde " + pedido.estado + " el único cambio permitido es a " + esperado + ".",
+        pedido: pedido,
+      };
+    }
+
+    return {
+      ok: true,
+      mensaje: "El pedido pasó a " + nuevoEstado + ".",
+      pedido: { ...pedido, estado: nuevoEstado },
+    };
+  }
+
+  // Cancela un pedido Pendiente o En proceso. El motivo es obligatorio.
+  // Devuelve { ok, mensaje, campo, pedido }.
+  function cancelarPedido(pedido, motivo) {
+    if (!pedido) {
+      return { ok: false, mensaje: "El pedido no existe.", campo: "", pedido: pedido };
+    }
+
+    if (ESTADOS_CERRADOS.includes(pedido.estado)) {
+      return {
+        ok: false,
+        mensaje: "El pedido está " + pedido.estado + ": ya no se puede cancelar.",
+        campo: "",
+        pedido: pedido,
+      };
+    }
+
+    if (!ESTADOS_EDITABLES.includes(pedido.estado)) {
+      return { ok: false, mensaje: "Estado de pedido no reconocido.", campo: "", pedido: pedido };
+    }
+
+    const texto = String(motivo ?? "").trim();
+    if (texto === "") {
+      return { ok: false, mensaje: "El motivo de la cancelación es obligatorio.", campo: "motivo", pedido: pedido };
+    }
+
+    return {
+      ok: true,
+      mensaje: "El pedido fue cancelado.",
+      campo: "",
+      pedido: { ...pedido, estado: "Cancelado", motivoCancelacion: texto },
+    };
+  }
+
+  // Qué opciones muestra la pantalla de detalle. Un pedido cerrado no tiene ninguna.
+  function accionesDisponibles(pedido) {
+    if (!pedido || !ESTADOS_EDITABLES.includes(pedido.estado)) {
+      return [];
+    }
+    const acciones = [];
+    if (pedido.estado === "Pendiente") acciones.push("iniciarPreparacion");
+    if (pedido.estado === "En proceso") acciones.push("registrarEntrega");
+    acciones.push("cancelar", "modificarFecha");
+    return acciones;
+  }
+
+  // ============================================================
   // Exportación (una sola declaración de API para todo el archivo)
   // ============================================================
   const API = {
@@ -266,6 +368,10 @@
     calcularTotal,
     validarPedido,
     armarPedido,
+    siguienteEstado,
+    cambiarEstadoPedido,
+    cancelarPedido,
+    accionesDisponibles,
   };
 
   if (typeof module !== "undefined" && module.exports) {
