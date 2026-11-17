@@ -95,15 +95,46 @@
   }
 
   // ============================================================
-  // Tarea 5 (Donovan) · Filtrar productos por tipo · RF2  (versión mínima, ampliable)
+  // Tarea 5 (Donovan) · Catálogo de productos · RF2
   // ============================================================
   const TIPOS_ACCESORIO = ["Anillo", "Aretes", "Collar", "Pulsera"];
 
+  // Regresa solo las piezas del tipo pedido. Si no hay ninguna, regresa una lista vacía.
+  // Un tipo que no existe en el catálogo se rechaza con un error.
   function filtrarProductosPorTipo(productos, tipo) {
     if (!TIPOS_ACCESORIO.includes(tipo)) {
       throw new Error("Tipo de accesorio no válido.");
     }
     return productos.filter((p) => p.tipoAccesorio === tipo);
+  }
+
+  // Valida una pieza nueva antes de guardarla en el catálogo.
+  // Obligatorios: nombre de la pieza, tipo de accesorio y precio mayor que 0.
+  // Opcionales: descripción y material personalizable.
+  function validarProducto(producto) {
+    const p = producto || {};
+
+    if (String(p.nombrePieza ?? "").trim() === "") {
+      return { valida: false, mensaje: "El nombre de la pieza es obligatorio." };
+    }
+
+    const tipo = String(p.tipoAccesorio ?? "").trim();
+    if (tipo === "") {
+      return { valida: false, mensaje: "El tipo de accesorio es obligatorio." };
+    }
+    if (!TIPOS_ACCESORIO.includes(tipo)) {
+      return { valida: false, mensaje: "El tipo de accesorio no es válido." };
+    }
+
+    if (p.precio === undefined || p.precio === null || String(p.precio).trim() === "") {
+      return { valida: false, mensaje: "El precio es obligatorio." };
+    }
+    const precio = Number(p.precio);
+    if (!Number.isFinite(precio) || precio <= 0) {
+      return { valida: false, mensaje: "El precio debe ser un número mayor que 0." };
+    }
+
+    return { valida: true, mensaje: "" };
   }
 
   // ============================================================
@@ -117,6 +148,8 @@
     modificarFechaCompromiso,
     validarCliente,
     filtrarProductosPorTipo,
+    validarProducto,
+    TIPOS_ACCESORIO,
   };
 
   if (typeof module !== "undefined" && module.exports) {
