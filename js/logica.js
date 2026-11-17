@@ -81,7 +81,7 @@
   }
 
   // ============================================================
-  // Tarea 4 (Mónica) · Validar cliente · RF1  (versión mínima, ampliable)
+  // Tarea 4 (Mónica) · Validar cliente · RF1
   // ============================================================
   function validarCliente(cliente) {
     const c = cliente || {};
