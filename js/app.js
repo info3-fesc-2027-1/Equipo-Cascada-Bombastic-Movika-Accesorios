@@ -1,4 +1,5 @@
 /**
+/**
  * app.js — Pantallas de la interfaz: Clientes (Tarea 4 · RF1) y Catálogo (Tarea 5 · RF2)
  * Informática III · Grupo 1301 · Equipo 2 · Modelo Cascada
  *
@@ -599,6 +600,243 @@
   }
 
   // ==================================================================
+  // PANTALLA: PEDIDOS — lista y DETALLE con cambio de estado (Tarea 7 · RF4)
+  // ==================================================================
+  // La lista de esta versión es básica (solo sirve para entrar al detalle).
+  // La Tarea 8 la reemplaza por el listado completo (filtros, agrupado por entrega, atrasados);
+  // el detalle (mostrarDetallePedido) se queda como está.
+
+  const ETIQUETAS_ACCION = {
+    iniciarPreparacion: "Iniciar preparación",
+    registrarEntrega: "Registrar entrega",
+    cancelar: "Cancelar pedido",
+    modificarFecha: "Modificar fecha de compromiso",
+  };
+
+  /** "En proceso" → "estado-en-proceso" (para el color de la etiqueta de estado). */
+  function claseEstado(estado) {
+    return "estado-" + String(estado || "").toLowerCase().replace(/\s+/g, "-");
+  }
+
+  function mostrarPedidos(contenedor) {
+    mostrarListaPedidos(contenedor);
+  }
+
+  function mostrarListaPedidos(contenedor) {
+    const pedidos = window.Datos.obtenerPedidos().reverse(); // el más reciente primero
+
+    if (pedidos.length === 0) {
+      contenedor.innerHTML = `
+        <div id="lst-raiz">
+          <section class="panel">
+            <h2>Pedidos</h2>
+            <p class="vacio">Todavía no hay pedidos. Crea el primero en "Nuevo pedido".</p>
+            <div class="acciones"><button type="button" class="boton" data-ir="pedido">Ir a Nuevo pedido</button></div>
+          </section>
+        </div>`;
+    } else {
+      contenedor.innerHTML = `
+        <div id="lst-raiz">
+          <section class="panel" aria-labelledby="lst-titulo">
+            <div class="encabezado-lista">
+              <h2 id="lst-titulo">Pedidos</h2>
+              <span id="lst-contador" class="contador">${pedidos.length === 1 ? "1 pedido" : pedidos.length + " pedidos"}</span>
+            </div>
+            <div class="lista">
+              ${pedidos
+                .map((p) => {
+                  const cliente = window.Datos.obtenerClientePorId(p.idCliente);
+                  return `
+                    <article class="ficha">
+                      <h3>Pedido #${p.idPedido} · ${escapar(cliente ? cliente.nombre : "Cliente #" + p.idCliente)}</h3>
+                      <p class="datos"><span class="dato ${claseEstado(p.estado)}">${escapar(p.estado)}</span></p>
+                      <p>Entrega: ${escapar(p.puntoEntrega)} · Compromiso: ${formatearFecha(p.fechaCompromiso)}</p>
+                      <p class="precio">${escapar(formatoPesos.format(p.total))}</p>
+                      <button type="button" class="boton boton-chico" data-ver="${p.idPedido}">Ver detalle</button>
+                    </article>`;
+                })
+                .join("")}
+            </div>
+          </section>
+        </div>`;
+    }
+
+    contenedor.querySelector("#lst-raiz").addEventListener("click", function (evento) {
+      const ver = evento.target.closest("button[data-ver]");
+      if (ver) {
+        mostrarDetallePedido(contenedor, Number(ver.getAttribute("data-ver")));
+        return;
+      }
+      const ir = evento.target.closest("button[data-ir]");
+      if (ir) window.UI.mostrar(ir.getAttribute("data-ir"));
+    });
+  }
+
+  /**
+   * Detalle de un pedido: estado, datos, piezas y las acciones que su estado permite.
+   * `aviso` = { exito } con el mensaje que se muestra tras una acción (la pantalla se vuelve a dibujar).
+   */
+  function mostrarDetallePedido(contenedor, idPedido, aviso) {
+    const pedido = window.Datos.obtenerPedidoPorId(idPedido);
+
+    if (!pedido) {
+      contenedor.innerHTML = `
+        <div id="det-raiz">
+          <section class="panel">
+            <h2>Pedido no encontrado</h2>
+            <div class="acciones"><button type="button" class="boton" data-accion="volver">Volver a la lista</button></div>
+          </section>
+        </div>`;
+      contenedor.querySelector("#det-raiz").addEventListener("click", function (evento) {
+        if (evento.target.closest('button[data-accion="volver"]')) mostrarListaPedidos(contenedor);
+      });
+      return;
+    }
+
+    const cliente = window.Datos.obtenerClientePorId(pedido.idCliente);
+    const partidas = window.Datos.obtenerPartidasDePedido(pedido.idPedido);
+    const acciones = window.Logica.accionesDisponibles(pedido); // la regla vive en logica.js
+
+    contenedor.innerHTML = `
+      <div id="det-raiz">
+        <section class="panel" aria-labelledby="det-titulo">
+          <div class="encabezado-lista">
+            <h2 id="det-titulo">Pedido #${pedido.idPedido}</h2>
+            <span id="det-estado" class="dato ${claseEstado(pedido.estado)}">${escapar(pedido.estado)}</span>
+          </div>
+          <p>Cliente: ${escapar(cliente ? cliente.nombre : "Cliente #" + pedido.idCliente)}${
+            cliente ? " · WhatsApp: " + escapar(cliente.contactoWhatsapp) : ""
+          }</p>
+          <p>Punto de entrega: ${escapar(pedido.puntoEntrega)}</p>
+          <p>Creado: ${formatearFecha(String(pedido.fechaCreacion).slice(0, 10))} · Compromiso: <span id="det-compromiso">${formatearFecha(pedido.fechaCompromiso)}</span></p>
+          ${
+            pedido.estado === "Cancelado"
+              ? '<p id="det-motivo" class="mensaje mensaje-error">Motivo de la cancelación: ' + escapar(pedido.motivoCancelacion) + "</p>"
+              : ""
+          }
+        </section>
+
+        <section class="panel" aria-labelledby="det-piezas-titulo">
+          <h2 id="det-piezas-titulo">Piezas</h2>
+          <div class="carrito">
+            ${partidas
+              .map((pa) => {
+                const producto = window.Datos.obtenerProductoPorId(pa.idProducto);
+                return `
+                  <div class="linea">
+                    <div class="info">
+                      <strong>${escapar(producto ? producto.nombrePieza : "Pieza #" + pa.idProducto)}</strong>
+                      <span>${pa.cantidad} × ${escapar(formatoPesos.format(pa.precioUnitario))} = ${escapar(formatoPesos.format(pa.subtotal))}</span>
+                      ${pa.personalizacion ? "<span>Personalización: " + escapar(pa.personalizacion) + "</span>" : ""}
+                    </div>
+                  </div>`;
+              })
+              .join("")}
+          </div>
+          <p class="total">Total: ${escapar(formatoPesos.format(pedido.total))}</p>
+        </section>
+
+        <section class="panel" aria-labelledby="det-acciones-titulo">
+          <h2 id="det-acciones-titulo">Acciones</h2>
+          <p id="det-error" role="alert" hidden class="mensaje mensaje-error"></p>
+          <p id="det-exito" role="status" hidden class="mensaje mensaje-exito"></p>
+          ${
+            acciones.length === 0
+              ? '<p id="det-cerrado" class="vacio">Este pedido está cerrado: ya no admite cambios.</p>'
+              : '<div id="det-acciones" class="filtros">' +
+                acciones
+                  .map((a) => '<button type="button" class="boton boton-chico" data-accion="' + a + '">' + ETIQUETAS_ACCION[a] + "</button>")
+                  .join("") +
+                "</div>"
+          }
+          <div id="det-formulario"></div>
+          <div class="acciones">
+            <button type="button" class="boton boton-chico" data-accion="volver">Volver a la lista</button>
+          </div>
+        </section>
+      </div>`;
+
+    const raiz = contenedor.querySelector("#det-raiz");
+    const cajaError = raiz.querySelector("#det-error");
+    const cajaExito = raiz.querySelector("#det-exito");
+    const zonaFormulario = raiz.querySelector("#det-formulario");
+    const mostrarMensaje = crearMensajero(cajaError, cajaExito);
+
+    if (aviso && aviso.exito) mostrarMensaje(cajaExito, aviso.exito);
+
+    // Guarda el pedido que devolvió logica.js y vuelve a dibujar el detalle con el aviso de éxito.
+    function guardarYRefrescar(resultado) {
+      window.Datos.actualizarPedido(resultado.pedido); // el guardado vive en datos.js
+      mostrarDetallePedido(contenedor, pedido.idPedido, { exito: resultado.mensaje });
+    }
+
+    function abrirFormulario(accion) {
+      mostrarMensaje(null, "");
+      if (accion === "cancelar") {
+        zonaFormulario.innerHTML = `
+          <div class="caja">
+            <label for="det-motivo-texto" class="etiqueta">Motivo de la cancelación <span class="obligatorio">*</span></label>
+            <textarea id="det-motivo-texto" rows="3" class="campo"></textarea>
+            <div class="acciones">
+              <button type="button" class="boton boton-chico" data-accion="confirmarCancelacion">Confirmar cancelación</button>
+              <button type="button" class="boton boton-chico" data-accion="cerrarFormulario">No cancelar</button>
+            </div>
+          </div>`;
+        zonaFormulario.querySelector("#det-motivo-texto").focus();
+      } else {
+        zonaFormulario.innerHTML = `
+          <div class="caja">
+            <label for="det-fecha-nueva" class="etiqueta">Nueva fecha de compromiso <span class="obligatorio">*</span></label>
+            <input id="det-fecha-nueva" type="date" value="${escapar(pedido.fechaCompromiso)}" class="campo">
+            <div class="acciones">
+              <button type="button" class="boton boton-chico" data-accion="confirmarFecha">Guardar fecha</button>
+              <button type="button" class="boton boton-chico" data-accion="cerrarFormulario">Cerrar</button>
+            </div>
+          </div>`;
+        zonaFormulario.querySelector("#det-fecha-nueva").focus();
+      }
+    }
+
+    raiz.addEventListener("click", function (evento) {
+      const boton = evento.target.closest("button[data-accion]");
+      if (!boton) return;
+      const accion = boton.getAttribute("data-accion");
+
+      if (accion === "volver") {
+        mostrarListaPedidos(contenedor);
+      } else if (accion === "iniciarPreparacion" || accion === "registrarEntrega") {
+        const destino = accion === "iniciarPreparacion" ? "En proceso" : "Entregado";
+        const resultado = window.Logica.cambiarEstadoPedido(pedido, destino); // la regla vive en logica.js
+        if (resultado.ok) guardarYRefrescar(resultado);
+        else mostrarMensaje(cajaError, resultado.mensaje);
+      } else if (accion === "cancelar" || accion === "modificarFecha") {
+        abrirFormulario(accion);
+      } else if (accion === "cerrarFormulario") {
+        zonaFormulario.innerHTML = "";
+        mostrarMensaje(null, "");
+      } else if (accion === "confirmarCancelacion") {
+        const campo = zonaFormulario.querySelector("#det-motivo-texto");
+        const resultado = window.Logica.cancelarPedido(pedido, campo.value);
+        if (resultado.ok) {
+          guardarYRefrescar(resultado);
+        } else {
+          mostrarMensaje(cajaError, resultado.mensaje);
+          campo.focus();
+        }
+      } else if (accion === "confirmarFecha") {
+        const campo = zonaFormulario.querySelector("#det-fecha-nueva");
+        const resultado = window.Logica.modificarFechaCompromiso(pedido, campo.value); // Tarea 3
+        if (resultado.ok) {
+          guardarYRefrescar(resultado);
+        } else {
+          mostrarMensaje(cajaError, resultado.mensaje);
+          campo.focus();
+        }
+      }
+    });
+  }
+
+  // ==================================================================
   // REGISTRO DE PANTALLAS (el menú y la navegación están en ui-pixel.js)
   // ==================================================================
   function registrarPantallas() {
@@ -615,7 +853,7 @@
     window.UI.registrarVista("clientes", mostrarClientes);   // Tarea 4
     window.UI.registrarVista("catalogo", mostrarCatalogo);   // Tarea 5
     window.UI.registrarVista("pedido", mostrarNuevoPedido);   // Tarea 6
-    // window.UI.registrarVista("pedidos", mostrarPedidos);      ← Tareas 7 y 8
+    window.UI.registrarVista("pedidos", mostrarPedidos);      // Tarea 7 (la Tarea 8 amplía la lista)
   }
 
   registrarPantallas();
