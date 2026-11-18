@@ -436,3 +436,35 @@ button.boton[aria-pressed="true"] {
   font-size: 0.85rem;
   line-height: 1.5;
 }
+
+/* ==========================================================
+   Pedidos (Tarea 7): color de la etiqueta de estado
+   ========================================================== */
+
+.dato.estado-pendiente {
+  background: var(--amarillo);
+}
+
+.dato.estado-en-proceso {
+  background: var(--cielo-claro);
+}
+
+.dato.estado-entregado {
+  background: #c8f0b8;
+}
+
+.dato.estado-cancelado {
+  background: #ffd9d6;
+}
+
+#det-acciones {
+  margin-bottom: 14px;
+}
+
+#det-formulario .acciones {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 12px;
+}
