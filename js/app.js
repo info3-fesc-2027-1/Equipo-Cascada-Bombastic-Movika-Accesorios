@@ -1,5 +1,4 @@
 /**
-/**
  * app.js — Pantallas de la interfaz: Clientes (Tarea 4 · RF1) y Catálogo (Tarea 5 · RF2)
  * Informática III · Grupo 1301 · Equipo 2 · Modelo Cascada
  *
@@ -602,9 +601,8 @@
   // ==================================================================
   // PANTALLA: PEDIDOS — lista y DETALLE con cambio de estado (Tarea 7 · RF4)
   // ==================================================================
-  // La lista de esta versión es básica (solo sirve para entrar al detalle).
-  // La Tarea 8 la reemplaza por el listado completo (filtros, agrupado por entrega, atrasados);
-  // el detalle (mostrarDetallePedido) se queda como está.
+  // La lista (Tarea 8) tiene filtros, agrupa por punto de entrega y muestra primero los atrasados.
+  // El detalle (Tarea 7) permite cambiar el estado, cancelar con motivo y modificar la fecha.
 
   const ETIQUETAS_ACCION = {
     iniciarPreparacion: "Iniciar preparación",
@@ -622,10 +620,22 @@
     mostrarListaPedidos(contenedor);
   }
 
-  function mostrarListaPedidos(contenedor) {
-    const pedidos = window.Datos.obtenerPedidos().reverse(); // el más reciente primero
+  // Filtros del listado: se conservan al entrar a un detalle y volver.
+  let filtrosPedidos = { estado: "", idCliente: "", soloAtrasados: false };
 
-    if (pedidos.length === 0) {
+  function textoPedidos(n) {
+    return n === 1 ? "1 pedido" : n + " pedidos";
+  }
+
+  function textoAtrasados(n) {
+    return n === 1 ? "1 atrasado" : n + " atrasados";
+  }
+
+  // Listado de pedidos (Tarea 8 · RF5): filtros, pendientes agrupados por punto de entrega y atrasados primero.
+  function mostrarListaPedidos(contenedor) {
+    const todos = window.Datos.obtenerPedidos();
+
+    if (todos.length === 0) {
       contenedor.innerHTML = `
         <div id="lst-raiz">
           <section class="panel">
@@ -634,42 +644,185 @@
             <div class="acciones"><button type="button" class="boton" data-ir="pedido">Ir a Nuevo pedido</button></div>
           </section>
         </div>`;
-    } else {
-      contenedor.innerHTML = `
-        <div id="lst-raiz">
-          <section class="panel" aria-labelledby="lst-titulo">
-            <div class="encabezado-lista">
-              <h2 id="lst-titulo">Pedidos</h2>
-              <span id="lst-contador" class="contador">${pedidos.length === 1 ? "1 pedido" : pedidos.length + " pedidos"}</span>
+      contenedor.querySelector("#lst-raiz").addEventListener("click", function (evento) {
+        const ir = evento.target.closest("button[data-ir]");
+        if (ir) window.UI.mostrar(ir.getAttribute("data-ir"));
+      });
+      return;
+    }
+
+    const clientes = window.Datos.obtenerClientes();
+    const nombreCliente = (id) => {
+      const c = clientes.find((x) => x.idCliente === Number(id));
+      return c ? c.nombre : "Cliente #" + id;
+    };
+
+    contenedor.innerHTML = `
+      <div id="lst-raiz">
+        <section class="panel" aria-labelledby="lst-titulo">
+          <div class="encabezado-lista">
+            <h2 id="lst-titulo">Pedidos</h2>
+            <span id="lst-contador" class="contador"></span>
+          </div>
+
+          <div class="grupo fila-doble">
+            <div>
+              <label for="lst-estado" class="etiqueta">Estado</label>
+              <select id="lst-estado" class="campo">
+                <option value="">Todos</option>
+                ${window.Logica.ESTADOS_PEDIDO.map((e) => '<option value="' + escapar(e) + '">' + escapar(e) + "</option>").join("")}
+              </select>
             </div>
-            <div class="lista">
-              ${pedidos
-                .map((p) => {
-                  const cliente = window.Datos.obtenerClientePorId(p.idCliente);
-                  return `
-                    <article class="ficha">
-                      <h3>Pedido #${p.idPedido} · ${escapar(cliente ? cliente.nombre : "Cliente #" + p.idCliente)}</h3>
-                      <p class="datos"><span class="dato ${claseEstado(p.estado)}">${escapar(p.estado)}</span></p>
-                      <p>Entrega: ${escapar(p.puntoEntrega)} · Compromiso: ${formatearFecha(p.fechaCompromiso)}</p>
-                      <p class="precio">${escapar(formatoPesos.format(p.total))}</p>
-                      <button type="button" class="boton boton-chico" data-ver="${p.idPedido}">Ver detalle</button>
-                    </article>`;
-                })
-                .join("")}
+            <div>
+              <label for="lst-cliente" class="etiqueta">Cliente</label>
+              <select id="lst-cliente" class="campo">
+                <option value="">Todos</option>
+                ${clientes.map((c) => '<option value="' + c.idCliente + '">' + escapar(c.nombre) + "</option>").join("")}
+              </select>
             </div>
-          </section>
+          </div>
+
+          <div class="grupo">
+            <label class="casilla"><input type="checkbox" id="lst-atrasados"> Solo pedidos atrasados</label>
+          </div>
+          <div class="acciones">
+            <button type="button" class="boton boton-chico" data-accion="limpiar">Limpiar filtros</button>
+          </div>
+        </section>
+
+        <div id="lst-resultados"></div>
+      </div>`;
+
+    const raiz = contenedor.querySelector("#lst-raiz");
+    const selEstado = raiz.querySelector("#lst-estado");
+    const selCliente = raiz.querySelector("#lst-cliente");
+    const casillaAtrasados = raiz.querySelector("#lst-atrasados");
+
+    selEstado.value = filtrosPedidos.estado;
+    selCliente.value = String(filtrosPedidos.idCliente);
+    casillaAtrasados.checked = filtrosPedidos.soloAtrasados;
+
+    function filaPedido(p, hoy, conEntrega) {
+      const atrasado = window.Logica.esAtrasado(p, hoy);
+      const dias = window.Logica.diasDeRetraso(p, hoy);
+      return `
+        <tr class="${atrasado ? "atrasado" : ""}">
+          <td data-label="Pedido">#${p.idPedido}</td>
+          <td data-label="Cliente">${escapar(nombreCliente(p.idCliente))}</td>
+          <td data-label="Estado">
+            <span class="etiquetas">
+              <span class="dato ${claseEstado(p.estado)}">${escapar(p.estado)}</span>
+              ${atrasado ? '<span class="dato atrasado-etiqueta">Atrasado · ' + dias + (dias === 1 ? " día" : " días") + "</span>" : ""}
+            </span>
+          </td>
+          ${
+            conEntrega
+              ? '<td data-label="Entrega">' + escapar(p.puntoEntrega) + "</td>"
+              : '<td data-label="Compromiso">' + formatearFecha(p.fechaCompromiso) + "</td>"
+          }
+          <td data-label="Total">${escapar(formatoPesos.format(p.total))}</td>
+          <td data-label="Detalle"><button type="button" class="boton boton-chico" data-ver="${p.idPedido}">Ver detalle</button></td>
+        </tr>`;
+    }
+
+    function tabla(pedidos, hoy, conEntrega) {
+      return `
+        <div class="tabla-envoltura">
+          <table class="tabla-pedidos">
+            <thead>
+              <tr>
+                <th>Pedido</th><th>Cliente</th><th>Estado</th>
+                ${conEntrega ? "<th>Entrega</th>" : "<th>Compromiso</th>"}<th>Total</th><th>Detalle</th>
+              </tr>
+            </thead>
+            <tbody>${pedidos.map((p) => filaPedido(p, hoy, conEntrega)).join("")}</tbody>
+          </table>
         </div>`;
     }
 
-    contenedor.querySelector("#lst-raiz").addEventListener("click", function (evento) {
+    function pintarResultados() {
+      const hoy = window.Logica.fechaDeHoy();
+      const visibles = window.Logica.filtrarPedidos(todos, {
+        estado: filtrosPedidos.estado,
+        idCliente: filtrosPedidos.idCliente,
+        soloAtrasados: filtrosPedidos.soloAtrasados,
+        hoy: hoy,
+      });
+      const ordenados = window.Logica.ordenarPedidos(visibles, hoy); // atrasados primero
+      const porEntregar = ordenados.filter((p) => p.estado === "Pendiente" || p.estado === "En proceso");
+      const cerrados = ordenados.filter((p) => p.estado === "Entregado" || p.estado === "Cancelado");
+      const nAtrasados = porEntregar.filter((p) => window.Logica.esAtrasado(p, hoy)).length;
+
+      raiz.querySelector("#lst-contador").textContent = textoPedidos(visibles.length);
+
+      let html = "";
+
+      if (visibles.length === 0) {
+        html = '<section class="panel"><p class="vacio" id="lst-sin-resultados">No hay pedidos con estos filtros.</p></section>';
+      } else {
+        if (nAtrasados > 0) {
+          html +=
+            '<p id="lst-aviso" role="status" class="mensaje mensaje-error">Atención: ' +
+            (nAtrasados === 1 ? "hay 1 pedido atrasado" : "hay " + nAtrasados + " pedidos atrasados") +
+            ". Aparecen primero y resaltados.</p>";
+        }
+
+        // Pendientes y en proceso: agrupados por punto de entrega, con los atrasados primero.
+        window.Logica.agruparPorPuntoEntrega(porEntregar, hoy).forEach(function (g) {
+          html += `
+            <section class="panel grupo-entrega" aria-label="Entrega: ${escapar(g.puntoEntrega)}">
+              <div class="encabezado-lista">
+                <h2>${escapar(g.puntoEntrega)}</h2>
+                <span class="contador">${textoPedidos(g.total)}${g.atrasados ? " · " + textoAtrasados(g.atrasados) : ""}</span>
+              </div>
+              ${tabla(g.pedidos, hoy, false)}
+            </section>`;
+        });
+
+        if (cerrados.length > 0) {
+          html += `
+            <section class="panel grupo-cerrados" aria-label="Entregados y cancelados">
+              <div class="encabezado-lista">
+                <h2>Entregados y cancelados</h2>
+                <span class="contador">${textoPedidos(cerrados.length)}</span>
+              </div>
+              ${tabla(cerrados, hoy, true)}
+            </section>`;
+        }
+      }
+
+      raiz.querySelector("#lst-resultados").innerHTML = html;
+    }
+
+    selEstado.addEventListener("change", function () {
+      filtrosPedidos.estado = selEstado.value;
+      pintarResultados();
+    });
+    selCliente.addEventListener("change", function () {
+      filtrosPedidos.idCliente = selCliente.value;
+      pintarResultados();
+    });
+    casillaAtrasados.addEventListener("change", function () {
+      filtrosPedidos.soloAtrasados = casillaAtrasados.checked;
+      pintarResultados();
+    });
+
+    raiz.addEventListener("click", function (evento) {
       const ver = evento.target.closest("button[data-ver]");
       if (ver) {
         mostrarDetallePedido(contenedor, Number(ver.getAttribute("data-ver")));
         return;
       }
-      const ir = evento.target.closest("button[data-ir]");
-      if (ir) window.UI.mostrar(ir.getAttribute("data-ir"));
+      if (evento.target.closest('button[data-accion="limpiar"]')) {
+        filtrosPedidos = { estado: "", idCliente: "", soloAtrasados: false };
+        selEstado.value = "";
+        selCliente.value = "";
+        casillaAtrasados.checked = false;
+        pintarResultados();
+      }
     });
+
+    pintarResultados();
   }
 
   /**
@@ -702,7 +855,15 @@
         <section class="panel" aria-labelledby="det-titulo">
           <div class="encabezado-lista">
             <h2 id="det-titulo">Pedido #${pedido.idPedido}</h2>
-            <span id="det-estado" class="dato ${claseEstado(pedido.estado)}">${escapar(pedido.estado)}</span>
+            <span>
+              <span id="det-estado" class="dato ${claseEstado(pedido.estado)}">${escapar(pedido.estado)}</span>
+              ${
+                window.Logica.esAtrasado(pedido)
+                  ? '<span id="det-atrasado" class="dato atrasado-etiqueta">Atrasado · ' + window.Logica.diasDeRetraso(pedido) +
+                    (window.Logica.diasDeRetraso(pedido) === 1 ? " día" : " días") + "</span>"
+                  : ""
+              }
+            </span>
           </div>
           <p>Cliente: ${escapar(cliente ? cliente.nombre : "Cliente #" + pedido.idCliente)}${
             cliente ? " · WhatsApp: " + escapar(cliente.contactoWhatsapp) : ""
@@ -853,7 +1014,7 @@
     window.UI.registrarVista("clientes", mostrarClientes);   // Tarea 4
     window.UI.registrarVista("catalogo", mostrarCatalogo);   // Tarea 5
     window.UI.registrarVista("pedido", mostrarNuevoPedido);   // Tarea 6
-    window.UI.registrarVista("pedidos", mostrarPedidos);      // Tarea 7 (la Tarea 8 amplía la lista)
+    window.UI.registrarVista("pedidos", mostrarPedidos);      // Tareas 7 y 8
   }
 
   registrarPantallas();

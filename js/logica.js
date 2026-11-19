@@ -352,6 +352,118 @@
   }
 
   // ============================================================
+  // Tarea 8 (Donovan) · Listado de pedidos: atrasados, orden, filtros y grupos · RF5 · RC-01(c)
+  // ============================================================
+  // «Atrasado» NO es un estado: se calcula. Es atrasado un pedido Pendiente o En proceso cuya
+  // fecha de compromiso ya pasó (es anterior a hoy). Solo cambia el orden y el resaltado del listado.
+  // Estas funciones son puras: no leen ni guardan nada. Reciben `hoy` (AAAA-MM-DD) para poder probarlas.
+  const ESTADOS_PEDIDO = ["Pendiente", "En proceso", "Entregado", "Cancelado"];
+
+  function esAtrasado(pedido, hoy) {
+    if (!pedido || !ESTADOS_EDITABLES.includes(pedido.estado)) {
+      return false;
+    }
+    const fecha = String(pedido.fechaCompromiso ?? "").trim();
+    if (!esFechaReal(fecha)) {
+      return false;
+    }
+    return fecha < (hoy || fechaDeHoy());
+  }
+
+  // Días de retraso (0 si el pedido no está atrasado). Se calcula con fechas UTC para evitar problemas de horario.
+  function diasDeRetraso(pedido, hoy) {
+    if (!esAtrasado(pedido, hoy)) {
+      return 0;
+    }
+    const aDias = (texto) => {
+      const [a, m, d] = texto.split("-").map(Number);
+      return Date.UTC(a, m - 1, d) / 86400000;
+    };
+    return Math.round(aDias(hoy || fechaDeHoy()) - aDias(String(pedido.fechaCompromiso).trim()));
+  }
+
+  // Orden del listado: 1) atrasados (el más viejo primero), 2) los demás por entregar, por fecha de
+  // compromiso más cercana, 3) cerrados (Entregado/Cancelado), el más reciente primero. No modifica la lista original.
+  function ordenarPedidos(pedidos, hoy) {
+    const ref = hoy || fechaDeHoy();
+    const nivel = (p) => (esAtrasado(p, ref) ? 0 : ESTADOS_EDITABLES.includes(p.estado) ? 1 : 2);
+
+    return pedidos.slice().sort((a, b) => {
+      const na = nivel(a);
+      const nb = nivel(b);
+      if (na !== nb) return na - nb;
+      if (na === 2) return Number(b.idPedido) - Number(a.idPedido);
+      const fa = String(a.fechaCompromiso);
+      const fb = String(b.fechaCompromiso);
+      if (fa !== fb) return fa < fb ? -1 : 1;
+      return Number(a.idPedido) - Number(b.idPedido);
+    });
+  }
+
+  // Clave para agrupar puntos de entrega escritos distinto: "Metro  Cuautitlán" = "metro cuautitlan".
+  function clavePunto(texto) {
+    return String(texto ?? "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .trim()
+      .replace(/\s+/g, " ")
+      .toLowerCase();
+  }
+
+  // Agrupa por punto de entrega. Devuelve [{ puntoEntrega, pedidos, total, atrasados }].
+  // Los grupos con pedidos atrasados van primero (el de retraso más viejo antes); los pedidos de cada grupo, ordenados.
+  // El grupo se llama como la mayoría de sus pedidos escribió el punto de entrega.
+  function agruparPorPuntoEntrega(pedidos, hoy) {
+    const ref = hoy || fechaDeHoy();
+    const grupos = new Map();
+
+    ordenarPedidos(pedidos, ref).forEach((p) => {
+      const clave = clavePunto(p.puntoEntrega);
+      if (!grupos.has(clave)) {
+        grupos.set(clave, { variantes: new Map(), pedidos: [] });
+      }
+      const g = grupos.get(clave);
+      const nombre = String(p.puntoEntrega ?? "").trim() || "Sin punto de entrega";
+      g.variantes.set(nombre, (g.variantes.get(nombre) || 0) + 1);
+      g.pedidos.push(p);
+    });
+
+    const lista = Array.from(grupos.values()).map((g) => ({
+      // el grupo se llama como más se escribió; si empatan, como aparece primero
+      puntoEntrega: Array.from(g.variantes.entries()).sort((x, y) => y[1] - x[1])[0][0],
+      pedidos: g.pedidos,
+      total: g.pedidos.length,
+      atrasados: g.pedidos.filter((p) => esAtrasado(p, ref)).length,
+      masUrgente: g.pedidos.map((p) => String(p.fechaCompromiso)).sort()[0] || "",
+    }));
+
+    lista.sort((a, b) => {
+      if ((a.atrasados > 0) !== (b.atrasados > 0)) return a.atrasados > 0 ? -1 : 1;
+      if (a.masUrgente !== b.masUrgente) return a.masUrgente < b.masUrgente ? -1 : 1;
+      return a.puntoEntrega.localeCompare(b.puntoEntrega, "es");
+    });
+
+    return lista.map(({ masUrgente, ...grupo }) => grupo);
+  }
+
+  // Filtra por estado, por cliente y/o solo atrasados. Un estado que no existe es un error de programación.
+  function filtrarPedidos(pedidos, filtros) {
+    const f = filtros || {};
+    if (f.estado && !ESTADOS_PEDIDO.includes(f.estado)) {
+      throw new Error("Estado de pedido no válido.");
+    }
+    const ref = f.hoy || fechaDeHoy();
+    const hayCliente = f.idCliente !== undefined && f.idCliente !== null && String(f.idCliente) !== "";
+
+    return pedidos.filter(
+      (p) =>
+        (!f.estado || p.estado === f.estado) &&
+        (!hayCliente || Number(p.idCliente) === Number(f.idCliente)) &&
+        (!f.soloAtrasados || esAtrasado(p, ref))
+    );
+  }
+
+  // ============================================================
   // Exportación (una sola declaración de API para todo el archivo)
   // ============================================================
   const API = {
@@ -372,6 +484,12 @@
     cambiarEstadoPedido,
     cancelarPedido,
     accionesDisponibles,
+    ESTADOS_PEDIDO,
+    esAtrasado,
+    diasDeRetraso,
+    ordenarPedidos,
+    agruparPorPuntoEntrega,
+    filtrarPedidos,
   };
 
   if (typeof module !== "undefined" && module.exports) {
