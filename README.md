@@ -4,7 +4,7 @@ Plataforma web para la gestión de ventas de un negocio de joyería de plata. Pr
 
 - **Equipo:** Equipo 2
 - **Modelo de desarrollo:** Cascada
-- **Sitio desplegado:**  <!-- TODO: pegar la URL real de Vercel -->
+- **Sitio desplegado:** [(https://equipo-cascada-bombastic-movika-acc.vercel.app/)]
 
 ---
 
@@ -14,8 +14,8 @@ Plataforma web para la gestión de ventas de un negocio de joyería de plata. Pr
 |---|---|
 | Barrera Farfán Landon Donovan | Datos (Tarea 1) y catálogo (Tarea 5) |
 | Hernández Hernández Wendy Génesis Ashlan | Validación de fecha de compromiso (Tarea 2) y cambio de estado (Tarea 7) |
-| Felipe Mondragón Isaí | Modificar fecha de compromiso (Tarea 3) y listado de pedidos (Tarea 8) |
-| Paredes Sánchez Mónica Fernanda | Registro de clientes (Tarea 4) y creación de pedidos (Tarea 6) |
+| Felipe Mondragón Isaí | Modificar fecha de compromiso (Tarea 3) y listado de pedidos (Tarea 6) |
+| Paredes Sánchez Mónica Fernanda | Registro de clientes (Tarea 4) y creación de pedidos (Tarea 8) |
 
 ---
 
@@ -31,4 +31,5 @@ Movika Accesorios gestionaba sus ventas de forma manual por WhatsApp. Este proye
 
 ## Licencia y uso
 
-Proyecto con fines exclusivamente académicos. UNAM FES Cuautitlán, Informática III, Grupo 1301.
+© 2026 Movika Accesorios. Todos los derechos reservados. 
+UNAM FES Cuautitlán, Informática III, Grupo 1301.
