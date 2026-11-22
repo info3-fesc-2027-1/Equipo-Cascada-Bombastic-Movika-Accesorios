@@ -9,7 +9,7 @@
  * El menú y la navegación los maneja ui-pixel.js. Cada pantalla se registra con
  * UI.registrarVista(clave, funcionQueDibuja). Para agregar otra (pedidos...):
  *  1) escribe su función mostrarXxx(contenedor) en su propia sección de este archivo
- *  2) regístrala al final, en registrarPantallas()
+ *  2) regístrala al final, en arrancar()
  */
 (function () {
   "use strict";
@@ -46,11 +46,45 @@
     };
   }
 
+  // ------------------------------------------------------------------
+  // Carga de datos
+  // En modo nube (Supabase) las funciones de Datos son asíncronas; con datos.js (local) también
+  // funcionan con `await`. Por eso todas las pantallas las usan con await.
+  // ------------------------------------------------------------------
+
+  // Cada pantalla que carga datos toma un número. Si la persona cambia de pantalla mientras se
+  // espera la respuesta, la pantalla anterior ya no dibuja encima de la nueva.
+  let vistaActiva = 0;
+
+  function mensajeDeError(error) {
+    return (error && error.message) || "Ocurrió un error inesperado.";
+  }
+
+  function mostrarCargando(contenedor) {
+    contenedor.innerHTML = '<section class="panel"><p class="vacio" id="cargando">Cargando…</p></section>';
+  }
+
+  function mostrarErrorDeCarga(contenedor, error, reintentar) {
+    contenedor.innerHTML =
+      '<section class="panel"><h2>No se pudo cargar</h2>' +
+      '<p id="err-carga" role="alert" class="mensaje mensaje-error"></p>' +
+      '<div class="acciones"><button type="button" class="boton" data-accion="reintentar">Reintentar</button></div></section>';
+    contenedor.querySelector("#err-carga").textContent = mensajeDeError(error);
+    contenedor.querySelector('[data-accion="reintentar"]').addEventListener("click", reintentar);
+  }
+
+  // Evita guardar dos veces si se pulsa el botón varias veces mientras espera al servidor.
+  function bloquearEnvio(form, bloqueado) {
+    const boton = form.querySelector('button[type="submit"]');
+    if (boton) boton.disabled = bloqueado;
+  }
+
   // ==================================================================
   // PANTALLA: CLIENTES (Tarea 4 · RF1)
   // ==================================================================
 
-  function mostrarClientes(contenedor) {
+  async function mostrarClientes(contenedor) {
+    const mi = ++vistaActiva;
     contenedor.innerHTML = `
       <section class="panel" aria-labelledby="cli-titulo">
         <h2 id="cli-titulo">Registrar cliente</h2>
@@ -112,10 +146,20 @@
       contenedor.querySelector("#cli-exito")
     );
 
-    function pintarLista() {
+    async function pintarLista() {
       const lista = contenedor.querySelector("#cli-lista");
       const contador = contenedor.querySelector("#cli-contador");
-      const clientes = window.Datos.obtenerClientes().reverse(); // el más reciente primero
+      let clientes;
+      try {
+        clientes = (await window.Datos.obtenerClientes()).reverse(); // el más reciente primero
+      } catch (error) {
+        if (mi !== vistaActiva) return;
+        contador.textContent = "";
+        lista.innerHTML = '<p class="mensaje mensaje-error" role="alert" id="cli-error-carga"></p>';
+        lista.querySelector("#cli-error-carga").textContent = mensajeDeError(error);
+        return;
+      }
+      if (mi !== vistaActiva) return;
 
       contador.textContent = clientes.length === 1 ? "1 cliente" : clientes.length + " clientes";
 
@@ -147,7 +191,7 @@
         .join("");
     }
 
-    form.addEventListener("submit", function (evento) {
+    form.addEventListener("submit", async function (evento) {
       evento.preventDefault();
 
       const f = new FormData(form);
@@ -169,11 +213,21 @@
         return;
       }
 
-      // El guardado vive en datos.js.
-      window.Datos.guardarCliente(cliente);
+      // El guardado vive en datos.js (o datos-supabase.js).
+      bloquearEnvio(form, true);
+      try {
+        await window.Datos.guardarCliente(cliente);
+      } catch (error) {
+        bloquearEnvio(form, false);
+        if (mi === vistaActiva) mostrarMensaje(contenedor.querySelector("#cli-error"), mensajeDeError(error));
+        return;
+      }
+      bloquearEnvio(form, false);
+      if (mi !== vistaActiva) return;
       form.reset();
       mostrarMensaje(contenedor.querySelector("#cli-exito"), "Cliente guardado: " + cliente.nombre + ".");
-      pintarLista();
+      await pintarLista();
+      if (mi !== vistaActiva) return;
       contenedor.querySelector("#cli-nombre").focus();
     });
 
@@ -189,7 +243,8 @@
 
   const formatoPesos = new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" });
 
-  function mostrarCatalogo(contenedor) {
+  async function mostrarCatalogo(contenedor) {
+    const mi = ++vistaActiva;
     const tipos = window.Logica.TIPOS_ACCESORIO;
     let filtroActual = ""; // "" = todos
 
@@ -266,10 +321,20 @@
         .join("");
     }
 
-    function pintarLista() {
+    async function pintarLista() {
       const lista = contenedor.querySelector("#cat-lista");
       const contador = contenedor.querySelector("#cat-contador");
-      const todos = window.Datos.obtenerProductos();
+      let todos;
+      try {
+        todos = await window.Datos.obtenerProductos();
+      } catch (error) {
+        if (mi !== vistaActiva) return;
+        contador.textContent = "";
+        lista.innerHTML = '<p class="mensaje mensaje-error" role="alert" id="cat-error-carga"></p>';
+        lista.querySelector("#cat-error-carga").textContent = mensajeDeError(error);
+        return;
+      }
+      if (mi !== vistaActiva) return;
 
       // El filtrado es una regla: vive en logica.js
       const productos = (filtroActual === ""
@@ -311,7 +376,7 @@
       pintarLista();
     });
 
-    form.addEventListener("submit", function (evento) {
+    form.addEventListener("submit", async function (evento) {
       evento.preventDefault();
 
       const f = new FormData(form);
@@ -334,14 +399,24 @@
         return;
       }
 
-      // El guardado vive en datos.js.
-      window.Datos.guardarProducto({ ...producto, precio: Number(producto.precio) });
+      // El guardado vive en datos.js (o datos-supabase.js).
+      bloquearEnvio(form, true);
+      try {
+        await window.Datos.guardarProducto({ ...producto, precio: Number(producto.precio) });
+      } catch (error) {
+        bloquearEnvio(form, false);
+        if (mi === vistaActiva) mostrarMensaje(contenedor.querySelector("#cat-error"), mensajeDeError(error));
+        return;
+      }
+      bloquearEnvio(form, false);
+      if (mi !== vistaActiva) return;
       form.reset();
       // Si el filtro activo ocultaría la pieza recién guardada, se muestran todas.
       if (filtroActual !== "" && filtroActual !== producto.tipoAccesorio) filtroActual = "";
       mostrarMensaje(contenedor.querySelector("#cat-exito"), "Pieza guardada: " + producto.nombrePieza + ".");
       pintarFiltros();
-      pintarLista();
+      await pintarLista();
+      if (mi !== vistaActiva) return;
       contenedor.querySelector("#cat-nombre").focus();
     });
 
@@ -353,9 +428,25 @@
   // PANTALLA: NUEVO PEDIDO (Tarea 6 · RF3 · RN-04, RN-06)
   // ==================================================================
 
-  function mostrarNuevoPedido(contenedor) {
-    const clientes = window.Datos.obtenerClientes();
-    const productos = window.Datos.obtenerProductos();
+  async function mostrarNuevoPedido(contenedor) {
+    const mi = ++vistaActiva;
+    mostrarCargando(contenedor);
+
+    let clientes, productos, pedidosPrevios;
+    try {
+      [clientes, productos, pedidosPrevios] = await Promise.all([
+        window.Datos.obtenerClientes(),
+        window.Datos.obtenerProductos(),
+        window.Datos.obtenerPedidos(),
+      ]);
+    } catch (error) {
+      if (mi !== vistaActiva) return;
+      mostrarErrorDeCarga(contenedor, error, function () {
+        mostrarNuevoPedido(contenedor);
+      });
+      return;
+    }
+    if (mi !== vistaActiva) return;
 
     // Sin clientes o sin piezas no se puede crear un pedido: se guía a la persona.
     if (clientes.length === 0 || productos.length === 0) {
@@ -379,9 +470,7 @@
       return;
     }
 
-    const puntosUsados = Array.from(
-      new Set(window.Datos.obtenerPedidos().map((p) => p.puntoEntrega).filter(Boolean))
-    );
+    const puntosUsados = Array.from(new Set(pedidosPrevios.map((p) => p.puntoEntrega).filter(Boolean)));
 
     let partidas = []; // { idProducto, nombre, cantidad, precioUnitario, personalizacion }
 
@@ -554,7 +643,7 @@
       pintarCarrito();
     });
 
-    form.addEventListener("submit", function (evento) {
+    form.addEventListener("submit", async function (evento) {
       evento.preventDefault();
 
       const f = new FormData(form);
@@ -580,8 +669,18 @@
         return;
       }
 
-      // El guardado vive en datos.js.
-      const guardado = window.Datos.guardarPedido(resultado.pedido, resultado.partidas);
+      // El guardado vive en datos.js (o datos-supabase.js).
+      let guardado;
+      bloquearEnvio(form, true);
+      try {
+        guardado = await window.Datos.guardarPedido(resultado.pedido, resultado.partidas);
+      } catch (error) {
+        bloquearEnvio(form, false);
+        if (mi === vistaActiva) mostrarMensaje(contenedor.querySelector("#ped-error"), mensajeDeError(error));
+        return;
+      }
+      bloquearEnvio(form, false);
+      if (mi !== vistaActiva) return;
       const cliente = clientes.find((c) => c.idCliente === guardado.idCliente);
 
       partidas = [];
@@ -632,8 +731,21 @@
   }
 
   // Listado de pedidos (Tarea 8 · RF5): filtros, pendientes agrupados por punto de entrega y atrasados primero.
-  function mostrarListaPedidos(contenedor) {
-    const todos = window.Datos.obtenerPedidos();
+  async function mostrarListaPedidos(contenedor) {
+    const mi = ++vistaActiva;
+    mostrarCargando(contenedor);
+
+    let todos, clientes;
+    try {
+      [todos, clientes] = await Promise.all([window.Datos.obtenerPedidos(), window.Datos.obtenerClientes()]);
+    } catch (error) {
+      if (mi !== vistaActiva) return;
+      mostrarErrorDeCarga(contenedor, error, function () {
+        mostrarListaPedidos(contenedor);
+      });
+      return;
+    }
+    if (mi !== vistaActiva) return;
 
     if (todos.length === 0) {
       contenedor.innerHTML = `
@@ -651,7 +763,6 @@
       return;
     }
 
-    const clientes = window.Datos.obtenerClientes();
     const nombreCliente = (id) => {
       const c = clientes.find((x) => x.idCliente === Number(id));
       return c ? c.nombre : "Cliente #" + id;
@@ -829,8 +940,28 @@
    * Detalle de un pedido: estado, datos, piezas y las acciones que su estado permite.
    * `aviso` = { exito } con el mensaje que se muestra tras una acción (la pantalla se vuelve a dibujar).
    */
-  function mostrarDetallePedido(contenedor, idPedido, aviso) {
-    const pedido = window.Datos.obtenerPedidoPorId(idPedido);
+  async function mostrarDetallePedido(contenedor, idPedido, aviso) {
+    const mi = ++vistaActiva;
+    mostrarCargando(contenedor);
+
+    let pedido, cliente, partidas, productos;
+    try {
+      pedido = await window.Datos.obtenerPedidoPorId(idPedido);
+      if (pedido) {
+        [cliente, partidas, productos] = await Promise.all([
+          window.Datos.obtenerClientePorId(pedido.idCliente),
+          window.Datos.obtenerPartidasDePedido(pedido.idPedido),
+          window.Datos.obtenerProductos(),
+        ]);
+      }
+    } catch (error) {
+      if (mi !== vistaActiva) return;
+      mostrarErrorDeCarga(contenedor, error, function () {
+        mostrarDetallePedido(contenedor, idPedido, aviso);
+      });
+      return;
+    }
+    if (mi !== vistaActiva) return;
 
     if (!pedido) {
       contenedor.innerHTML = `
@@ -846,8 +977,6 @@
       return;
     }
 
-    const cliente = window.Datos.obtenerClientePorId(pedido.idCliente);
-    const partidas = window.Datos.obtenerPartidasDePedido(pedido.idPedido);
     const acciones = window.Logica.accionesDisponibles(pedido); // la regla vive en logica.js
 
     contenedor.innerHTML = `
@@ -882,7 +1011,7 @@
           <div class="carrito">
             ${partidas
               .map((pa) => {
-                const producto = window.Datos.obtenerProductoPorId(pa.idProducto);
+                const producto = productos.find((x) => x.idProducto === pa.idProducto);
                 return `
                   <div class="linea">
                     <div class="info">
@@ -926,9 +1055,20 @@
     if (aviso && aviso.exito) mostrarMensaje(cajaExito, aviso.exito);
 
     // Guarda el pedido que devolvió logica.js y vuelve a dibujar el detalle con el aviso de éxito.
-    function guardarYRefrescar(resultado) {
-      window.Datos.actualizarPedido(resultado.pedido); // el guardado vive en datos.js
-      mostrarDetallePedido(contenedor, pedido.idPedido, { exito: resultado.mensaje });
+    // Si otra persona ya cambió el pedido, la base de datos lo rechaza y se muestra el aviso.
+    let ocupado = false;
+    async function guardarYRefrescar(resultado) {
+      ocupado = true;
+      try {
+        await window.Datos.actualizarPedido(resultado.pedido, { estadoAnterior: pedido.estado });
+      } catch (error) {
+        ocupado = false;
+        if (mi === vistaActiva) mostrarMensaje(cajaError, mensajeDeError(error));
+        return;
+      }
+      ocupado = false;
+      if (mi !== vistaActiva) return;
+      await mostrarDetallePedido(contenedor, pedido.idPedido, { exito: resultado.mensaje });
     }
 
     function abrirFormulario(accion) {
@@ -960,7 +1100,7 @@
 
     raiz.addEventListener("click", function (evento) {
       const boton = evento.target.closest("button[data-accion]");
-      if (!boton) return;
+      if (!boton || ocupado) return;
       const accion = boton.getAttribute("data-accion");
 
       if (accion === "volver") {
@@ -1000,22 +1140,53 @@
   // ==================================================================
   // REGISTRO DE PANTALLAS (el menú y la navegación están en ui-pixel.js)
   // ==================================================================
-  function registrarPantallas() {
-    if (!window.UI || !window.Datos || !window.Logica) {
-      const c = document.getElementById("contenido");
-      if (c) {
-        c.innerHTML =
-          '<section class="panel"><h2>Error</h2>' +
-          "<p>No se cargaron ui-pixel.js, datos.js o logica.js. Revisa el orden de los scripts en index.html.</p></section>";
-      }
+  function mostrarErrorGeneral(texto) {
+    const c = document.getElementById("contenido");
+    if (!c) return;
+    c.innerHTML = '<section class="panel"><h2>Error</h2><p class="mensaje mensaje-error" role="alert" id="error-general"></p></section>';
+    c.querySelector("#error-general").textContent = texto;
+  }
+
+  async function arrancar() {
+    if (!window.UI || !window.Logica) {
+      mostrarErrorGeneral("No se cargaron ui-pixel.js o logica.js. Revisa el orden de los scripts en index.html.");
       return;
     }
-    window.Datos.inicializarDatos();
+    if (window.ERROR_NUBE) {
+      mostrarErrorGeneral(window.ERROR_NUBE);
+      return;
+    }
+    if (!window.Datos) {
+      mostrarErrorGeneral("No se cargó datos.js. Revisa el orden de los scripts en index.html.");
+      return;
+    }
+
+    // Modo nube: nadie ve la aplicación hasta iniciar sesión.
+    if (window.Datos.esNube) {
+      if (!window.Acceso) {
+        mostrarErrorGeneral("No se cargó acceso.js. Revisa el orden de los scripts en index.html.");
+        return;
+      }
+      try {
+        await window.Acceso.exigirSesion();
+      } catch (error) {
+        mostrarErrorGeneral(mensajeDeError(error));
+        return;
+      }
+    }
+
+    try {
+      await window.Datos.inicializarDatos();
+    } catch (error) {
+      mostrarErrorGeneral(mensajeDeError(error));
+      return;
+    }
+
     window.UI.registrarVista("clientes", mostrarClientes);   // Tarea 4
     window.UI.registrarVista("catalogo", mostrarCatalogo);   // Tarea 5
     window.UI.registrarVista("pedido", mostrarNuevoPedido);   // Tarea 6
     window.UI.registrarVista("pedidos", mostrarPedidos);      // Tareas 7 y 8
   }
 
-  registrarPantallas();
+  arrancar();
 })();
