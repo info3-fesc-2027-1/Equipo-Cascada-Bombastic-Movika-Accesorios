@@ -15,6 +15,6 @@
  * igual que antes. Cuando se llenan, la página exige inicio de sesión y guarda todo en Supabase.
  */
 window.MOVIKA_CONFIG = {
-  supabaseUrl: "",
-  supabaseKey: "",
+  supabaseUrl: "https://kxhzxeiuzzqpznfmiosw.supabase.co",
+  supabaseKey: "sb_publishable_sx3YfFjns8DX_DFXHuct9Q_mDrdCTZ2",
 };
